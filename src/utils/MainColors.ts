@@ -1,30 +1,25 @@
-// MainColors.ts - Centralized color configuration
-// Unique Cinematic Theme - Deep Purple & Gold
+// src/theme/MainColors.ts
+// Central place for app colors so UI stays consistent across screens/components.
+
 export const MainColors = {
-  // Primary colors - Cinematic & Unique
-  primary: '#8B5CF6',      // Rich violet purple
-  secondary: '#F59E0B',    // Golden amber
-  tertiary: '#EC4899',     // Hot pink accent
-  
-  // Background colors - Dark elegant theme
-  background: '#18181B',   // Rich charcoal
-  surface: '#27272A',      // Warm dark gray
-  surfaceLight: '#3F3F46', // Medium gray
-  
-  // Text colors
-  textPrimary: '#FAFAFA',  // Bright white
-  textSecondary: '#A1A1AA', // Soft gray
-  textMuted: '#71717A',    // Muted gray
-  
-  // UI elements
-  border: '#3F3F46',       // Subtle border
-  overlay: 'rgba(139, 92, 246, 0.15)', // Purple tinted overlay
-  
-  // Status colors
-  rating: '#FBBF24',       // Bright gold for ratings
-  error: '#F43F5E',        // Rose red
-  
-  // Gradients (for advanced styling)
-  gradientStart: '#8B5CF6', // Violet
-  gradientEnd: '#EC4899',   // Pink
-};
+  background: "#0B0F19",     // deep navy (premium feel)
+  surface: "#121A2B",        // card surface
+  surface2: "#16213A",       // elevated surface (headers/blocks)
+  border: "rgba(255,255,255,0.08)",
+
+  text: "#F4F7FF",
+  textMuted: "rgba(244,247,255,0.72)",
+  textFaint: "rgba(244,247,255,0.55)",
+
+  primary: "#6D5EF9",        // vibrant purple
+  primarySoft: "rgba(109,94,249,0.18)",
+  accent: "#24D2C1",         // teal accent
+  accentSoft: "rgba(36,210,193,0.18)",
+
+  rating: "#FFC857",         // warm gold for rating
+  danger: "#FF5C6C",
+  dangerSoft: "rgba(255,92,108,0.18)",
+
+  white: "#FFFFFF",
+  shadow: "#000000",
+} as const;
