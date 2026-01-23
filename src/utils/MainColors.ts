@@ -25,6 +25,14 @@ export const MainColors = {
   sectionChipBorder: "rgba(255,255,255,0.10)",
   divider: "rgba(255,255,255,0.06)",
 
+  // Detail screen extras
+  overlay: "rgba(11,15,25,0.72)",
+  chipBg: "rgba(255,255,255,0.08)",
+  chipBorder: "rgba(255,255,255,0.12)",
+  buttonDark: "#0F1628",
+
+
+
   white: "#FFFFFF",
   shadow: "#000000",
 } as const;
