@@ -38,27 +38,33 @@ type DetailUi = {
 };
 
 export default function DetailScreen() {
+  // Route params come from Home/Search/Watchlist navigation
   const route = useRoute<DetailRoute>();
   const { id, mediaType } = route.params;
 
+  // Watchlist store selectors kept small so rerenders stay predictable
   const hydrate = useWatchlistStore((s) => s.hydrate);
   const hydrated = useWatchlistStore((s) => s.hydrated);
   const toggle = useWatchlistStore((s) => s.toggle);
   const isInWatchlist = useWatchlistStore((s) => s.isInWatchlist);
 
+  // Used to style the CTA and decide add/remove behavior
   const saved = isInWatchlist(id, mediaType);
 
+  // Core detail state (TMDB details endpoint)
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [detail, setDetail] = useState<DetailUi | null>(null);
 
+  // Credits are optional; load them after we have the main detail
   const [creditsLoading, setCreditsLoading] = useState(false);
   const [cast, setCast] = useState<TMDBCreditsResponse["cast"]>([]);
 
-  // Simple toast popup
+  // Lightweight toast feedback for watchlist actions
   const [toastText, setToastText] = useState<string | null>(null);
   const toastAnim = useRef(new Animated.Value(0)).current;
 
+  // Small toast helper to show quick feedback without blocking the UI
   const showToast = useCallback(
     (text: string) => {
       setToastText(text);
@@ -82,6 +88,7 @@ export default function DetailScreen() {
     [toastAnim]
   );
 
+  // Convert TMDB raw response into a UI-friendly model
   const buildUi = useCallback(
     (raw: any): DetailUi => {
       const isMovie = mediaType === "movie";
@@ -92,6 +99,7 @@ export default function DetailScreen() {
         ? raw.genres.map((g: any) => g.name).filter(Boolean)
         : [];
 
+      // Runtime differs between movie and tv; normalize to a readable string
       const runtimeText = (() => {
         if (isMovie) {
           const mins = typeof raw.runtime === "number" ? raw.runtime : null;
@@ -127,6 +135,7 @@ export default function DetailScreen() {
     [mediaType]
   );
 
+  // Fetch main detail payload for movie/tv based on route params
   const loadDetail = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -141,6 +150,7 @@ export default function DetailScreen() {
     }
   }, [buildUi, id, mediaType]);
 
+  // Bonus: fetch credits (top cast) after details load
   const loadCredits = useCallback(async () => {
     setCreditsLoading(true);
     try {
@@ -151,24 +161,29 @@ export default function DetailScreen() {
         .slice(0, 6);
       setCast(top);
     } catch {
+      // Credits should never break the screen; just hide the section content
       setCast([]);
     } finally {
       setCreditsLoading(false);
     }
   }, [id, mediaType]);
 
+  // Hydrate persisted watchlist once so saved state is accurate on first render
   useEffect(() => {
     if (!hydrated) hydrate().catch(() => {});
   }, [hydrate, hydrated]);
 
+  // Initial screen load: fetch details
   useEffect(() => {
     loadDetail();
   }, [loadDetail]);
 
+  // Load credits only when detail is ready
   useEffect(() => {
     if (detail) loadCredits();
   }, [detail, loadCredits]);
 
+  // Minimal data we persist in watchlist
   const watchlistPayload = useMemo(() => {
     if (!detail) return null;
     return {
@@ -179,10 +194,12 @@ export default function DetailScreen() {
     };
   }, [detail]);
 
+  // Full-screen loading state
   if (loading) {
     return <Loading title="Loading details" subtitle="Pulling info from TMDB..." />;
   }
 
+  // Full-screen error state with retry
   if (error || !detail) {
     return (
       <ErrorState
@@ -195,7 +212,7 @@ export default function DetailScreen() {
 
   return (
     <View style={styles.root}>
-      {/* Toast popup */}
+      {/* Toast sits above everything and auto-hides */}
       {toastText && (
         <Animated.View
           style={[
@@ -218,6 +235,7 @@ export default function DetailScreen() {
       )}
 
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+        {/* Hero area: backdrop + poster + key metadata */}
         <View style={styles.hero}>
           {detail.backdropUrl ? (
             <Image source={{ uri: detail.backdropUrl }} style={styles.backdrop} />
@@ -225,9 +243,11 @@ export default function DetailScreen() {
             <View style={styles.backdropFallback} />
           )}
 
+          {/* Dark overlay keeps title readable on bright backdrops */}
           <View style={styles.heroOverlay} />
 
           <View style={styles.heroContent}>
+            {/* Poster block */}
             <View style={styles.posterWrap}>
               {detail.posterUrl ? (
                 <Image source={{ uri: detail.posterUrl }} style={styles.poster} />
@@ -239,6 +259,7 @@ export default function DetailScreen() {
               )}
             </View>
 
+            {/* Title and metadata block */}
             <View style={styles.heroInfo}>
               <Text style={styles.title} numberOfLines={3}>
                 {detail.title}
@@ -267,16 +288,19 @@ export default function DetailScreen() {
           </View>
         </View>
 
+        {/* Overview section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Overview</Text>
           <Text style={styles.overview}>{detail.overview}</Text>
         </View>
 
+        {/* Watchlist CTA section */}
         <View style={styles.section}>
           <Pressable
             onPress={() => {
               if (!watchlistPayload) return;
 
+              // Read before toggle so we show correct message
               const wasSaved = isInWatchlist(watchlistPayload.id, watchlistPayload.mediaType);
               toggle(watchlistPayload);
 
@@ -303,6 +327,7 @@ export default function DetailScreen() {
           </Text>
         </View>
 
+        {/* Cast section (optional, does not block screen if it fails) */}
         <View style={styles.section}>
           <View style={styles.sectionTitleRow}>
             <Text style={styles.sectionTitle}>Top Cast</Text>
@@ -342,6 +367,7 @@ export default function DetailScreen() {
           )}
         </View>
 
+        {/* Bottom spacing to keep last content above the tab bar */}
         <View style={{ height: 26 }} />
       </ScrollView>
     </View>
@@ -480,8 +506,8 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   castAvatarWrap: {
-    width: 50,
-    height: 50,
+    width: 100,
+    height: 100,
     borderRadius: 999,
     overflow: "hidden",
     borderWidth: 1,
