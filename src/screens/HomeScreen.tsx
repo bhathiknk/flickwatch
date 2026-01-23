@@ -16,6 +16,7 @@ import { RootStackParamList } from "../navigation/RootNavigator";
 import MediaCard from "../components/MediaCard";
 import ErrorState from "../components/ErrorState";
 import { MainColors } from "../utils/MainColors";
+import SkeletonCard from "../components/SkeletonCard";
 
 import {
   getPopularMovies,
@@ -226,6 +227,10 @@ export default function HomeScreen() {
 
   const listSeparator = useMemo(() => <View style={{ width: 12 }} />, []);
 
+  const popularSkeleton = useMemo(() => Array.from({ length: 8 }, (_, i) => i), []);
+  const trendingSkeleton = useMemo(() => Array.from({ length: 10 }, (_, i) => i), []);
+  const tvSkeleton = useMemo(() => Array.from({ length: 8 }, (_, i) => i), []);
+
   return (
     <ScrollView
       style={styles.container}
@@ -273,31 +278,32 @@ export default function HomeScreen() {
           />
         </View>
       ) : (
-        <View style={styles.sectionBody}>
-          <FlatList
-            // keep home lightweight: only 1 page preview, no onEndReached
-            data={popular.items}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            keyExtractor={(item) => String(item.id)}
-            ItemSeparatorComponent={() => listSeparator}
-            contentContainerStyle={styles.listContent}
-            renderItem={renderPopularItem}
-            initialNumToRender={6}
-            windowSize={5}
-            removeClippedSubviews
-            ListEmptyComponent={
-              popular.loading ? (
-                <View style={styles.inlineLoading}>
-                  <Ionicons name="reload" size={18} color={MainColors.textMuted} />
-                  <Text style={styles.inlineLoadingText}>Loading...</Text>
-                </View>
-              ) : (
-                <Text style={styles.emptyText}>No items available.</Text>
-              )
-            }
-          />
-        </View>
+      <View style={styles.sectionBody}>
+  {popular.loading ? (
+    <FlatList
+      data={[1, 2, 3, 4, 5]}
+      horizontal
+      keyExtractor={(x) => String(x)}
+      ItemSeparatorComponent={() => <View style={{ width: 12 }} />}
+      contentContainerStyle={styles.listContent}
+      showsHorizontalScrollIndicator={false}
+      renderItem={() => <SkeletonCard />}
+    />
+  ) : (
+    <FlatList
+      data={popular.items}
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      keyExtractor={(item) => String(item.id)}
+      ItemSeparatorComponent={() => listSeparator}
+      contentContainerStyle={styles.listContent}
+      renderItem={renderPopularItem}
+      initialNumToRender={6}
+      windowSize={5}
+      removeClippedSubviews
+    />
+  )}
+</View>
       )}
 
       <View style={styles.divider} />
@@ -336,9 +342,10 @@ export default function HomeScreen() {
             removeClippedSubviews
             ListEmptyComponent={
               trending.loading ? (
-                <View style={styles.inlineLoading}>
-                  <Ionicons name="reload" size={18} color={MainColors.textMuted} />
-                  <Text style={styles.inlineLoadingText}>Loading...</Text>
+                <View style={styles.skeletonRow}>
+                  {trendingSkeleton.map((i) => (
+                    <SkeletonCard key={`t-skel-${i}`} variant="compact" />
+                  ))}
                 </View>
               ) : (
                 <Text style={styles.emptyText}>No items available.</Text>
@@ -384,9 +391,10 @@ export default function HomeScreen() {
             removeClippedSubviews
             ListEmptyComponent={
               topRatedTV.loading ? (
-                <View style={styles.inlineLoading}>
-                  <Ionicons name="reload" size={18} color={MainColors.textMuted} />
-                  <Text style={styles.inlineLoadingText}>Loading...</Text>
+                <View style={styles.skeletonRow}>
+                  {tvSkeleton.map((i) => (
+                    <SkeletonCard key={`tv-skel-${i}`} />
+                  ))}
                 </View>
               ) : (
                 <Text style={styles.emptyText}>No items available.</Text>
@@ -523,5 +531,13 @@ const styles = StyleSheet.create({
     backgroundColor: MainColors.divider,
     marginHorizontal: 16,
     marginTop: 6,
+  },
+
+  skeletonRow: {
+    flexDirection: "row",
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingTop: 6,
+    paddingBottom: 4,
   },
 });

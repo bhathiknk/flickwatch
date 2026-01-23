@@ -15,6 +15,7 @@ import { RootStackParamList, CategoryKind } from "../navigation/RootNavigator";
 import { MainColors } from "../utils/MainColors";
 import MediaCard from "../components/MediaCard";
 import ErrorState from "../components/ErrorState";
+import SkeletonCard from "../components/SkeletonCard";
 
 import {
   getPopularMovies,
@@ -208,6 +209,8 @@ export default function CategoryScreen() {
     return `page ${state.page} / ${state.totalPages}`;
   }, [state.page, state.totalPages]);
 
+  const skeletonGrid = useMemo(() => Array.from({ length: 8 }, (_, i) => i), []);
+
   if (state.error && !state.loading && state.items.length === 0) {
     return (
       <ErrorState
@@ -248,9 +251,10 @@ export default function CategoryScreen() {
         ListEmptyComponent={
           // keep it simple while loading first page
           state.loading ? (
-            <View style={styles.footerLoading}>
-              <ActivityIndicator size="small" color={MainColors.textMuted} />
-              <Text style={styles.footerLoadingText}>loading...</Text>
+            <View style={styles.skeletonWrap}>
+              {skeletonGrid.map((i) => (
+                <SkeletonCard key={`g-skel-${i}`} style={{ width: "48%" }} />
+              ))}
             </View>
           ) : (
             <View style={{ height: 90 }} />
@@ -365,4 +369,14 @@ const styles = StyleSheet.create({
     marginHorizontal: 10,
   },
   pagePillText: { color: MainColors.text, fontSize: 12.5, fontWeight: "900" },
+
+  skeletonWrap: {
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 10,
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    rowGap: 12,
+  },
 });
