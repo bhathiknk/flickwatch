@@ -38,33 +38,33 @@ type DetailUi = {
 };
 
 export default function DetailScreen() {
-  // Route params come from Home/Search/Watchlist navigation
+  // route params from home/search/watchlist
   const route = useRoute<DetailRoute>();
   const { id, mediaType } = route.params;
 
-  // Watchlist store selectors kept small so rerenders stay predictable
+  // watchlist selectors kept small for less rerenders
   const hydrate = useWatchlistStore((s) => s.hydrate);
   const hydrated = useWatchlistStore((s) => s.hydrated);
   const toggle = useWatchlistStore((s) => s.toggle);
   const isInWatchlist = useWatchlistStore((s) => s.isInWatchlist);
 
-  // Used to style the CTA and decide add/remove behavior
+  // used for button text + style
   const saved = isInWatchlist(id, mediaType);
 
-  // Core detail state (TMDB details endpoint)
+  // main details state
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [detail, setDetail] = useState<DetailUi | null>(null);
 
-  // Credits are optional; load them after we have the main detail
+  // credits state, load after details
   const [creditsLoading, setCreditsLoading] = useState(false);
   const [cast, setCast] = useState<TMDBCreditsResponse["cast"]>([]);
 
-  // Lightweight toast feedback for watchlist actions
+  // tiny toast feedback for watchlist action
   const [toastText, setToastText] = useState<string | null>(null);
   const toastAnim = useRef(new Animated.Value(0)).current;
 
-  // Small toast helper to show quick feedback without blocking the UI
+  // quick toast helper, no blocking ui
   const showToast = useCallback(
     (text: string) => {
       setToastText(text);
@@ -88,7 +88,7 @@ export default function DetailScreen() {
     [toastAnim]
   );
 
-  // Convert TMDB raw response into a UI-friendly model
+  // map tmdb raw into ui model
   const buildUi = useCallback(
     (raw: any): DetailUi => {
       const isMovie = mediaType === "movie";
@@ -99,7 +99,7 @@ export default function DetailScreen() {
         ? raw.genres.map((g: any) => g.name).filter(Boolean)
         : [];
 
-      // Runtime differs between movie and tv; normalize to a readable string
+      // runtime is different for movie vs tv, normalize a bit
       const runtimeText = (() => {
         if (isMovie) {
           const mins = typeof raw.runtime === "number" ? raw.runtime : null;
@@ -135,7 +135,7 @@ export default function DetailScreen() {
     [mediaType]
   );
 
-  // Fetch main detail payload for movie/tv based on route params
+  // fetch details based on type + id
   const loadDetail = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -150,7 +150,7 @@ export default function DetailScreen() {
     }
   }, [buildUi, id, mediaType]);
 
-  // Bonus: fetch credits (top cast) after details load
+  // fetch credits after details, keep it optional
   const loadCredits = useCallback(async () => {
     setCreditsLoading(true);
     try {
@@ -161,29 +161,29 @@ export default function DetailScreen() {
         .slice(0, 6);
       setCast(top);
     } catch {
-      // Credits should never break the screen; just hide the section content
+      // credits should never break screen
       setCast([]);
     } finally {
       setCreditsLoading(false);
     }
   }, [id, mediaType]);
 
-  // Hydrate persisted watchlist once so saved state is accurate on first render
+  // hydrate watchlist once, so saved state is right
   useEffect(() => {
     if (!hydrated) hydrate().catch(() => {});
   }, [hydrate, hydrated]);
 
-  // Initial screen load: fetch details
+  // initial load
   useEffect(() => {
     loadDetail();
   }, [loadDetail]);
 
-  // Load credits only when detail is ready
+  // load credits when details ready
   useEffect(() => {
     if (detail) loadCredits();
   }, [detail, loadCredits]);
 
-  // Minimal data we persist in watchlist
+  // minimal payload stored in watchlist
   const watchlistPayload = useMemo(() => {
     if (!detail) return null;
     return {
@@ -194,12 +194,12 @@ export default function DetailScreen() {
     };
   }, [detail]);
 
-  // Full-screen loading state
+  // full screen loading
   if (loading) {
     return <Loading title="Loading details" subtitle="Pulling info from TMDB..." />;
   }
 
-  // Full-screen error state with retry
+  // full screen error
   if (error || !detail) {
     return (
       <ErrorState
@@ -212,7 +212,7 @@ export default function DetailScreen() {
 
   return (
     <View style={styles.root}>
-      {/* Toast sits above everything and auto-hides */}
+      {/* toast overlay */}
       {toastText && (
         <Animated.View
           style={[
@@ -235,7 +235,7 @@ export default function DetailScreen() {
       )}
 
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-        {/* Hero area: backdrop + poster + key metadata */}
+        {/* hero section with backdrop + poster */}
         <View style={styles.hero}>
           {detail.backdropUrl ? (
             <Image source={{ uri: detail.backdropUrl }} style={styles.backdrop} />
@@ -243,11 +243,11 @@ export default function DetailScreen() {
             <View style={styles.backdropFallback} />
           )}
 
-          {/* Dark overlay keeps title readable on bright backdrops */}
+          {/* overlay for readability */}
           <View style={styles.heroOverlay} />
 
           <View style={styles.heroContent}>
-            {/* Poster block */}
+            {/* poster block */}
             <View style={styles.posterWrap}>
               {detail.posterUrl ? (
                 <Image source={{ uri: detail.posterUrl }} style={styles.poster} />
@@ -259,7 +259,7 @@ export default function DetailScreen() {
               )}
             </View>
 
-            {/* Title and metadata block */}
+            {/* title + meta */}
             <View style={styles.heroInfo}>
               <Text style={styles.title} numberOfLines={3}>
                 {detail.title}
@@ -288,19 +288,19 @@ export default function DetailScreen() {
           </View>
         </View>
 
-        {/* Overview section */}
+        {/* overview section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Overview</Text>
           <Text style={styles.overview}>{detail.overview}</Text>
         </View>
 
-        {/* Watchlist CTA section */}
+        {/* watchlist button section */}
         <View style={styles.section}>
           <Pressable
             onPress={() => {
               if (!watchlistPayload) return;
 
-              // Read before toggle so we show correct message
+              // read before toggle to show right toast
               const wasSaved = isInWatchlist(watchlistPayload.id, watchlistPayload.mediaType);
               toggle(watchlistPayload);
 
@@ -327,7 +327,7 @@ export default function DetailScreen() {
           </Text>
         </View>
 
-        {/* Cast section (optional, does not block screen if it fails) */}
+        {/* cast section, optional */}
         <View style={styles.section}>
           <View style={styles.sectionTitleRow}>
             <Text style={styles.sectionTitle}>Top Cast</Text>
@@ -367,7 +367,7 @@ export default function DetailScreen() {
           )}
         </View>
 
-        {/* Bottom spacing to keep last content above the tab bar */}
+        {/* bottom spacing for tab bar */}
         <View style={{ height: 26 }} />
       </ScrollView>
     </View>
@@ -375,8 +375,10 @@ export default function DetailScreen() {
 }
 
 const styles = StyleSheet.create({
+  // root container
   root: { flex: 1, backgroundColor: MainColors.background },
 
+  // toast styles
   toast: {
     position: "absolute",
     top: 14,
@@ -397,9 +399,11 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
 
+  // scroll container
   container: { flex: 1, backgroundColor: MainColors.background },
   content: { paddingBottom: 18 },
 
+  // hero/backdrop area
   hero: {
     height: 360,
     position: "relative",
@@ -410,6 +414,7 @@ const styles = StyleSheet.create({
   backdropFallback: { ...StyleSheet.absoluteFillObject, backgroundColor: MainColors.surface2 },
   heroOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: MainColors.overlay },
 
+  // hero layout content
   heroContent: {
     position: "absolute",
     left: 16,
@@ -420,6 +425,7 @@ const styles = StyleSheet.create({
     alignItems: "flex-end",
   },
 
+  // poster styles
   posterWrap: {
     width: 120,
     height: 170,
@@ -439,8 +445,10 @@ const styles = StyleSheet.create({
   },
   posterFallbackText: { color: MainColors.textFaint, fontSize: 12, fontWeight: "700" },
 
+  // hero info block
   heroInfo: { flex: 1, gap: 8 },
 
+  // title styles
   title: {
     color: MainColors.text,
     fontSize: 20,
@@ -448,31 +456,37 @@ const styles = StyleSheet.create({
     lineHeight: 24,
   },
 
+  // meta chips styles
   metaRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   metaChip: {
     color: MainColors.text,
     fontSize: 12,
     fontWeight: "900",
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
     borderRadius: 999,
     backgroundColor: MainColors.chipBg,
     borderWidth: 1,
     borderColor: MainColors.chipBorder,
   },
 
+  // rating row styles
   ratingRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   ratingText: { color: MainColors.text, fontSize: 14, fontWeight: "900" },
   ratingHint: { color: MainColors.textFaint, fontSize: 12, fontWeight: "800" },
 
+  // genres label
   genres: { color: MainColors.textMuted, fontSize: 12.5, fontWeight: "700" },
 
+  // shared section wrapper
   section: { paddingHorizontal: 16, paddingTop: 16, gap: 10 },
   sectionTitleRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   sectionTitle: { color: MainColors.text, fontSize: 14.5, fontWeight: "900" },
 
+  // overview text
   overview: { color: MainColors.textMuted, fontSize: 13.5, fontWeight: "600", lineHeight: 19 },
 
+  // watchlist button styles
   watchBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -487,6 +501,7 @@ const styles = StyleSheet.create({
   watchBtnText: { color: MainColors.white, fontSize: 14, fontWeight: "900" },
   btnPressed: { opacity: 0.92, transform: [{ scale: 0.99 }] },
 
+  // note under the watch button
   smallNote: {
     color: MainColors.textFaint,
     fontSize: 12,
@@ -495,6 +510,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
 
+  // cast list styles
   castRow: { flexDirection: "row", gap: 12, paddingRight: 16 },
   castCard: {
     width: 120,

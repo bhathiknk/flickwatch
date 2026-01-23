@@ -34,7 +34,7 @@ type HomeSectionState<T> = {
 export default function HomeScreen() {
   const navigation = useNavigation<NavProp>();
 
-  // Section state is independent so one broken endpoint doesn't kill the whole screen
+  // keep each section state alone so one api fail not break whole screen
   const [popular, setPopular] = useState<HomeSectionState<TMDBMovie>>({
     loading: true,
     error: null,
@@ -60,7 +60,7 @@ export default function HomeScreen() {
     [navigation]
   );
 
-  // Popular movies
+  // load popular movies
   const loadPopular = useCallback(async () => {
     setPopular((p) => ({ ...p, loading: true, error: null }));
     try {
@@ -71,7 +71,7 @@ export default function HomeScreen() {
     }
   }, []);
 
-  // Trending this week (mixed media, filtered to movie/tv in tmdb.ts)
+  // load trending this week (mixed, but filtered in tmdb.ts)
   const loadTrending = useCallback(async () => {
     setTrending((t) => ({ ...t, loading: true, error: null }));
     try {
@@ -82,7 +82,7 @@ export default function HomeScreen() {
     }
   }, []);
 
-  // Top rated TV shows
+  // load top rated tv shows
   const loadTopRatedTV = useCallback(async () => {
     setTopRatedTV((s) => ({ ...s, loading: true, error: null }));
     try {
@@ -93,14 +93,14 @@ export default function HomeScreen() {
     }
   }, []);
 
-  // Initial load
+  // first load when screen mount
   useEffect(() => {
     loadPopular();
     loadTrending();
     loadTopRatedTV();
   }, [loadPopular, loadTrending, loadTopRatedTV]);
 
-  // Generic section header component for consistent look
+  // small header ui for each section to keep it same style
   const SectionHeader = useCallback(
     ({
       title,
@@ -139,7 +139,7 @@ export default function HomeScreen() {
     []
   );
 
-  // Render helpers
+  // render popular movie card
   const renderPopularItem = useCallback(
     ({ item }: { item: TMDBMovie }) => {
       const posterUrl = getPosterUrl(item.poster_path);
@@ -159,6 +159,7 @@ export default function HomeScreen() {
     [openDetail]
   );
 
+  // render trending item (movie or tv)
   const renderTrendingItem = useCallback(
     ({ item }: { item: TMDBSearchItem }) => {
       const isMovie = item.media_type === "movie";
@@ -180,6 +181,7 @@ export default function HomeScreen() {
     [openDetail]
   );
 
+  // render top rated tv card
   const renderTopRatedTVItem = useCallback(
     ({ item }: { item: TMDBTV }) => {
       return (
@@ -200,7 +202,7 @@ export default function HomeScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      {/* Top header block */}
+      {/* top header block */}
       <View style={styles.header}>
         <View style={{ gap: 6 }}>
           <Text style={styles.heading}>FlickWatch</Text>
@@ -215,7 +217,7 @@ export default function HomeScreen() {
         </View>
       </View>
 
-      {/* Popular Movies section */}
+      {/* popular movies section */}
       <SectionHeader
         title="Popular Movies"
         iconName="flame"
@@ -242,7 +244,7 @@ export default function HomeScreen() {
             ItemSeparatorComponent={() => listSeparator}
             contentContainerStyle={styles.listContent}
             renderItem={renderPopularItem}
-            // Keeps UI smooth even on older devices
+            // keep ui smooth on old phones
             initialNumToRender={6}
             windowSize={5}
             removeClippedSubviews
@@ -263,7 +265,7 @@ export default function HomeScreen() {
 
       <View style={styles.divider} />
 
-      {/* Trending This Week section */}
+      {/* trending this week section */}
       <SectionHeader
         title="Trending This Week"
         iconName="trending-up"
@@ -309,7 +311,7 @@ export default function HomeScreen() {
 
       <View style={styles.divider} />
 
-      {/* Top Rated TV section */}
+      {/* top rated tv section */}
       <SectionHeader
         title="Top Rated TV Shows"
         iconName="tv"
@@ -353,23 +355,26 @@ export default function HomeScreen() {
         </View>
       )}
 
-      {/* Bottom spacing for tab bar */}
+      {/* bottom spacing for tab bar */}
       <View style={{ height: 30 }} />
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
+  // screen wrapper
   container: {
     flex: 1,
     backgroundColor: MainColors.background,
   },
+  // scroll content spacing
   content: {
     paddingTop: 16,
     paddingBottom: 20,
     gap: 14,
   },
 
+  // top header area
   header: {
     paddingHorizontal: 16,
     flexDirection: "row",
@@ -390,6 +395,7 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
 
+  // small badge on header right
   headerBadge: {
     flexDirection: "row",
     alignItems: "center",
@@ -407,16 +413,19 @@ const styles = StyleSheet.create({
     fontWeight: "900",
   },
 
+  // section header container
   sectionHeader: {
     paddingHorizontal: 16,
     gap: 6,
   },
+  // section header row (title + retry)
   sectionTitleRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     gap: 10,
   },
+  // section title chip
   sectionChip: {
     flexDirection: "row",
     alignItems: "center",
@@ -434,12 +443,14 @@ const styles = StyleSheet.create({
     fontWeight: "900",
     letterSpacing: 0.2,
   },
+  // section hint under title
   sectionHint: {
     color: MainColors.textMuted,
     fontSize: 12.5,
     fontWeight: "600",
   },
 
+  // retry button on section header
   retryBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -461,16 +472,19 @@ const styles = StyleSheet.create({
     fontWeight: "900",
   },
 
+  // area where flatlist or error block sits
   sectionBody: {
     minHeight: 260,
   },
 
+  // flatlist padding
   listContent: {
     paddingHorizontal: 16,
     paddingTop: 6,
     paddingBottom: 4,
   },
 
+  // loading chip used inside list empty slot
   inlineLoading: {
     height: 80,
     alignItems: "center",
@@ -490,6 +504,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
 
+  // small empty text in list
   emptyText: {
     color: MainColors.textFaint,
     fontSize: 13,
@@ -498,6 +513,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
 
+  // thin line between sections
   divider: {
     height: 1,
     backgroundColor: MainColors.divider,

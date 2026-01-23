@@ -1,36 +1,121 @@
-import React, { useEffect } from "react";
-import { View, Text, StyleSheet, FlatList, Pressable, Image } from "react-native";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  Modal,
+  Pressable,
+  Animated,
+} from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import Ionicons from "@expo/vector-icons/Ionicons";
 
 import { RootStackParamList } from "../navigation/RootNavigator";
 import { useWatchlistStore } from "../store/watchlistStore";
-import { getPosterUrl } from "../utils/image";
 import { MainColors } from "../utils/MainColors";
+import WatchlistCard from "../components/WatchlistCard";
 
 type NavProp = NativeStackNavigationProp<RootStackParamList, "Tabs">;
+
+type PendingRemove = {
+  id: number;
+  mediaType: "movie" | "tv";
+  title: string;
+} | null;
 
 export default function WatchlistScreen() {
   const navigation = useNavigation<NavProp>();
 
-  // Pull only what this screen needs from the store to keep rerenders minimal
+  // take only what we need from store
   const hydrate = useWatchlistStore((s) => s.hydrate);
   const hydrated = useWatchlistStore((s) => s.hydrated);
   const items = useWatchlistStore((s) => s.items);
   const remove = useWatchlistStore((s) => s.remove);
 
+  // confirmation modal state
+  const [pendingRemove, setPendingRemove] = useState<PendingRemove>(null);
+
+  // top toast state
+  const [toastText, setToastText] = useState<string | null>(null);
+  const toastAnim = useRef(new Animated.Value(0)).current;
+
+  const showToast = useCallback(
+    (text: string) => {
+      setToastText(text);
+
+      Animated.timing(toastAnim, {
+        toValue: 1,
+        duration: 180,
+        useNativeDriver: true,
+      }).start();
+
+      const t = setTimeout(() => {
+        Animated.timing(toastAnim, {
+          toValue: 0,
+          duration: 180,
+          useNativeDriver: true,
+        }).start(() => setToastText(null));
+      }, 1200);
+
+      return () => clearTimeout(t);
+    },
+    [toastAnim]
+  );
+
   useEffect(() => {
-    // Hydrate once so watchlist persists after app restarts
+    // hydrate once so it survives app restart
     if (!hydrated) hydrate().catch(() => {});
   }, [hydrated, hydrate]);
 
+  const requestRemove = useCallback((id: number, mediaType: "movie" | "tv", title: string) => {
+    setPendingRemove({ id, mediaType, title });
+  }, []);
+
+  const cancelRemove = useCallback(() => {
+    setPendingRemove(null);
+  }, []);
+
+  const confirmRemove = useCallback(() => {
+    if (!pendingRemove) return;
+
+    remove(pendingRemove.id, pendingRemove.mediaType);
+    setPendingRemove(null);
+
+    showToast("Removed from watchlist");
+  }, [pendingRemove, remove, showToast]);
+
   return (
     <View style={styles.container}>
-      {/* Screen header */}
+      {/* top toast */}
+      {toastText && (
+        <Animated.View
+          style={[
+            styles.toast,
+            {
+              opacity: toastAnim,
+              transform: [
+                {
+                  translateY: toastAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [-10, 0],
+                  }),
+                },
+              ],
+            },
+          ]}
+        >
+          <Ionicons name="checkmark-circle" size={16} color={MainColors.accent} />
+          <Text style={styles.toastText}>{toastText}</Text>
+        </Animated.View>
+      )}
+
+      {/* page title */}
       <Text style={styles.heading}>Watchlist</Text>
       <Text style={styles.subheading}>Saved items from Detail screen.</Text>
 
-      {/* Empty state keeps the screen informative even before the first save */}
+      {/* show empty view when nothing saved */}
       {items.length === 0 ? (
         <View style={styles.emptyBox}>
           <Text style={styles.emptyTitle}>Your watchlist is empty</Text>
@@ -40,74 +125,88 @@ export default function WatchlistScreen() {
         </View>
       ) : (
         <FlatList
-          // List of saved items pulled from Zustand store
+          // list of saved items from zustand
           data={items}
           keyExtractor={(item) => `${item.mediaType}-${item.id}`}
           contentContainerStyle={{ paddingTop: 12, paddingBottom: 24 }}
           ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
-          renderItem={({ item }) => {
-            // Convert stored posterPath into a TMDB image URL
-            const poster = getPosterUrl(item.posterPath, "w185");
-
-            return (
-              <Pressable
-                // Tap row opens the detail screen again
-                onPress={() =>
-                  navigation.navigate("Detail", {
-                    id: item.id,
-                    mediaType: item.mediaType,
-                    title: item.title,
-                  })
-                }
-                style={({ pressed }) => [styles.row, pressed && { opacity: 0.9 }]}
-              >
-                {/* Poster thumbnail */}
-                <View style={styles.posterWrap}>
-                  {poster ? (
-                    <Image source={{ uri: poster }} style={styles.poster} />
-                  ) : (
-                    <View style={styles.posterFallback}>
-                      <Text style={styles.posterFallbackText}>No Image</Text>
-                    </View>
-                  )}
-                </View>
-
-                {/* Title + media type */}
-                <View style={styles.info}>
-                  <Text style={styles.title} numberOfLines={2}>
-                    {item.title}
-                  </Text>
-                  <Text style={styles.meta}>{item.mediaType.toUpperCase()}</Text>
-                </View>
-
-                {/* Remove action (separate pressable to avoid accidental opens) */}
-                <Pressable
-                  onPress={() => remove(item.id, item.mediaType)}
-                  style={({ pressed }) => [styles.removeBtn, pressed && { opacity: 0.8 }]}
-                >
-                  <Text style={styles.removeText}>Remove</Text>
-                </Pressable>
-              </Pressable>
-            );
-          }}
+          renderItem={({ item }) => (
+            <WatchlistCard
+              title={item.title}
+              mediaType={item.mediaType}
+              posterPath={item.posterPath}
+              onPress={() =>
+                navigation.navigate("Detail", {
+                  id: item.id,
+                  mediaType: item.mediaType,
+                  title: item.title,
+                })
+              }
+              onRemove={() => requestRemove(item.id, item.mediaType, item.title)}
+            />
+          )}
         />
       )}
+
+      {/* remove confirm modal */}
+      <Modal
+        visible={!!pendingRemove}
+        transparent
+        animationType="fade"
+        onRequestClose={cancelRemove}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalIcon}>
+              <Ionicons name="trash-outline" size={18} color={MainColors.white} />
+            </View>
+
+            <Text style={styles.modalTitle}>Remove item?</Text>
+
+            <Text style={styles.modalText} numberOfLines={2}>
+              {pendingRemove?.title || ""}
+            </Text>
+
+            <Text style={styles.modalSub}>
+              This will remove it from your watchlist on this device
+            </Text>
+
+            <View style={styles.modalActions}>
+              <Pressable
+                onPress={cancelRemove}
+                style={({ pressed }) => [styles.btn, styles.btnGhost, pressed && styles.btnPressed]}
+              >
+                <Text style={styles.btnGhostText}>Cancel</Text>
+              </Pressable>
+
+              <Pressable
+                onPress={confirmRemove}
+                style={({ pressed }) => [styles.btn, styles.btnDanger, pressed && styles.btnPressed]}
+              >
+                <Text style={styles.btnDangerText}>Remove</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  // screen container styles
   container: {
     flex: 1,
     padding: 16,
     backgroundColor: MainColors.background,
   },
 
-  // Header typography
+  // header text styles
   heading: {
     fontSize: 22,
     fontWeight: "800",
     color: MainColors.text,
+    marginTop: 6,
   },
   subheading: {
     marginTop: 4,
@@ -116,7 +215,7 @@ const styles = StyleSheet.create({
     color: MainColors.textMuted,
   },
 
-  // Empty state block
+  // empty box styles
   emptyBox: {
     marginTop: 16,
     padding: 16,
@@ -129,47 +228,95 @@ const styles = StyleSheet.create({
   emptyTitle: { fontSize: 16, fontWeight: "800", color: MainColors.text },
   emptyText: { fontSize: 13, fontWeight: "600", color: MainColors.textMuted },
 
-  // Row layout for each saved item
-  row: {
+  // top toast styles
+  toast: {
+    position: "absolute",
+    top: 10,
+    left: 16,
+    right: 16,
+    zIndex: 50,
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-    padding: 12,
-    borderRadius: 14,
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 16,
     backgroundColor: MainColors.surface,
     borderWidth: 1,
     borderColor: MainColors.border,
   },
-
-  // Poster thumbnail container
-  posterWrap: {
-    width: 52,
-    height: 72,
-    borderRadius: 10,
-    overflow: "hidden",
-    backgroundColor: MainColors.surface2,
-  },
-  poster: { width: "100%", height: "100%", resizeMode: "cover" },
-  posterFallback: { flex: 1, alignItems: "center", justifyContent: "center" },
-  posterFallbackText: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: MainColors.textFaint,
+  toastText: {
+    color: MainColors.text,
+    fontSize: 13,
+    fontWeight: "800",
   },
 
-  // Text block
-  info: { flex: 1, gap: 4 },
-  title: { color: MainColors.text, fontSize: 14, fontWeight: "800" },
-  meta: { color: MainColors.textFaint, fontSize: 12, fontWeight: "700" },
-
-  // Remove button styling
-  removeBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
-    backgroundColor: MainColors.dangerSoft,
+  // modal styles
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.55)",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 20,
+  },
+  modalCard: {
+    width: "100%",
+    borderRadius: 20,
+    backgroundColor: MainColors.surface,
     borderWidth: 1,
-    borderColor: "rgba(255,92,108,0.35)",
+    borderColor: MainColors.border,
+    padding: 16,
+    gap: 10,
   },
-  removeText: { color: MainColors.text, fontSize: 12, fontWeight: "800" },
+  modalIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    backgroundColor: MainColors.danger,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  modalTitle: {
+    color: MainColors.text,
+    fontSize: 16,
+    fontWeight: "900",
+  },
+  modalText: {
+    color: MainColors.text,
+    fontSize: 14,
+    fontWeight: "800",
+  },
+  modalSub: {
+    color: MainColors.textMuted,
+    fontSize: 12.5,
+    fontWeight: "600",
+    lineHeight: 18,
+  },
+  modalActions: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 6,
+  },
+  btn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+  },
+  btnPressed: { opacity: 0.92, transform: [{ scale: 0.99 }] },
+
+  btnGhost: {
+    backgroundColor: MainColors.buttonDark,
+    borderColor: MainColors.border,
+  },
+  btnGhostText: { color: MainColors.text, fontSize: 13, fontWeight: "900" },
+
+  btnDanger: {
+    backgroundColor: MainColors.danger,
+    borderColor: "rgba(255,92,108,0.40)",
+  },
+  btnDangerText: { color: MainColors.white, fontSize: 13, fontWeight: "900" },
 });
