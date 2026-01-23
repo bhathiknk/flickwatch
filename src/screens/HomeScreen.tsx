@@ -1,5 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { View, Text, StyleSheet, FlatList, Pressable, ScrollView } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  Pressable,
+  ScrollView,
+  RefreshControl,
+} from "react-native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useNavigation } from "@react-navigation/native";
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -23,8 +31,6 @@ import { getPosterUrl, getYear } from "../utils/image";
 
 type NavProp = NativeStackNavigationProp<RootStackParamList, "Tabs">;
 
-type SectionKey = "popular" | "trending" | "topRatedTV";
-
 type HomeSectionState<T> = {
   loading: boolean;
   error: ApiError | null;
@@ -34,7 +40,10 @@ type HomeSectionState<T> = {
 export default function HomeScreen() {
   const navigation = useNavigation<NavProp>();
 
-  // keep each section state alone so one api fail not break whole screen
+  // pull-to-refresh state for whole page
+  const [refreshing, setRefreshing] = useState(false);
+
+  // keep sections simple on home (no pagination here)
   const [popular, setPopular] = useState<HomeSectionState<TMDBMovie>>({
     loading: true,
     error: null,
@@ -60,33 +69,36 @@ export default function HomeScreen() {
     [navigation]
   );
 
-  // load popular movies
+  // load popular movies (single page for home)
   const loadPopular = useCallback(async () => {
     setPopular((p) => ({ ...p, loading: true, error: null }));
+
     try {
-      const data = await getPopularMovies(1);
+      const data: any = await getPopularMovies(1);
       setPopular({ loading: false, error: null, items: data.results ?? [] });
     } catch (err: any) {
       setPopular((p) => ({ ...p, loading: false, error: err }));
     }
   }, []);
 
-  // load trending this week (mixed, but filtered in tmdb.ts)
+  // load trending this week (single page for home)
   const loadTrending = useCallback(async () => {
     setTrending((t) => ({ ...t, loading: true, error: null }));
+
     try {
-      const data = await getTrendingWeek(1);
+      const data: any = await getTrendingWeek(1);
       setTrending({ loading: false, error: null, items: data.results ?? [] });
     } catch (err: any) {
       setTrending((t) => ({ ...t, loading: false, error: err }));
     }
   }, []);
 
-  // load top rated tv shows
+  // load top rated tv (single page for home)
   const loadTopRatedTV = useCallback(async () => {
     setTopRatedTV((s) => ({ ...s, loading: true, error: null }));
+
     try {
-      const data = await getTopRatedTV(1);
+      const data: any = await getTopRatedTV(1);
       setTopRatedTV({ loading: false, error: null, items: data.results ?? [] });
     } catch (err: any) {
       setTopRatedTV((s) => ({ ...s, loading: false, error: err }));
@@ -100,6 +112,13 @@ export default function HomeScreen() {
     loadTopRatedTV();
   }, [loadPopular, loadTrending, loadTopRatedTV]);
 
+  // pull-to-refresh for whole page
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await Promise.allSettled([loadPopular(), loadTrending(), loadTopRatedTV()]);
+    setRefreshing(false);
+  }, [loadPopular, loadTrending, loadTopRatedTV]);
+
   // small header ui for each section to keep it same style
   const SectionHeader = useCallback(
     ({
@@ -108,19 +127,26 @@ export default function HomeScreen() {
       hint,
       onRetry,
       showRetry,
+      onOpen,
     }: {
       title: string;
       iconName: keyof typeof Ionicons.glyphMap;
       hint?: string;
       onRetry?: () => void;
       showRetry?: boolean;
+      onOpen?: () => void;
     }) => (
       <View style={styles.sectionHeader}>
         <View style={styles.sectionTitleRow}>
-          <View style={styles.sectionChip}>
+          <Pressable
+            // tap title area to open full list page
+            onPress={onOpen}
+            style={({ pressed }) => [styles.sectionChip, pressed && { opacity: 0.9 }]}
+          >
             <Ionicons name={iconName} size={16} color={MainColors.accent} />
             <Text style={styles.sectionTitle}>{title}</Text>
-          </View>
+            <Ionicons name="chevron-forward" size={16} color={MainColors.textFaint} />
+          </Pressable>
 
           {showRetry && onRetry && (
             <Pressable
@@ -201,7 +227,18 @@ export default function HomeScreen() {
   const listSeparator = useMemo(() => <View style={{ width: 12 }} />, []);
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      refreshControl={
+        <RefreshControl
+          // pull to refresh for whole page
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          tintColor={MainColors.textMuted}
+        />
+      }
+    >
       {/* top header block */}
       <View style={styles.header}>
         <View style={{ gap: 6 }}>
@@ -224,6 +261,7 @@ export default function HomeScreen() {
         hint="What people are watching right now"
         showRetry={!!popular.error}
         onRetry={loadPopular}
+        onOpen={() => navigation.navigate("Category", { kind: "popular" })}
       />
 
       {popular.error ? (
@@ -237,6 +275,7 @@ export default function HomeScreen() {
       ) : (
         <View style={styles.sectionBody}>
           <FlatList
+            // keep home lightweight: only 1 page preview, no onEndReached
             data={popular.items}
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -244,11 +283,9 @@ export default function HomeScreen() {
             ItemSeparatorComponent={() => listSeparator}
             contentContainerStyle={styles.listContent}
             renderItem={renderPopularItem}
-            // keep ui smooth on old phones
             initialNumToRender={6}
             windowSize={5}
             removeClippedSubviews
-            onEndReachedThreshold={0.6}
             ListEmptyComponent={
               popular.loading ? (
                 <View style={styles.inlineLoading}>
@@ -272,6 +309,7 @@ export default function HomeScreen() {
         hint="Movies and TV with momentum"
         showRetry={!!trending.error}
         onRetry={loadTrending}
+        onOpen={() => navigation.navigate("Category", { kind: "trending" })}
       />
 
       {trending.error ? (
@@ -285,6 +323,7 @@ export default function HomeScreen() {
       ) : (
         <View style={styles.sectionBody}>
           <FlatList
+            // keep home lightweight: only 1 page preview, no onEndReached
             data={trending.items}
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -318,6 +357,7 @@ export default function HomeScreen() {
         hint="Fan favorites with top scores"
         showRetry={!!topRatedTV.error}
         onRetry={loadTopRatedTV}
+        onOpen={() => navigation.navigate("Category", { kind: "tv" })}
       />
 
       {topRatedTV.error ? (
@@ -331,6 +371,7 @@ export default function HomeScreen() {
       ) : (
         <View style={styles.sectionBody}>
           <FlatList
+            // keep home lightweight: only 1 page preview, no onEndReached
             data={topRatedTV.items}
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -363,16 +404,10 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   // screen wrapper
-  container: {
-    flex: 1,
-    backgroundColor: MainColors.background,
-  },
+  container: { flex: 1, backgroundColor: MainColors.background },
+
   // scroll content spacing
-  content: {
-    paddingTop: 16,
-    paddingBottom: 20,
-    gap: 14,
-  },
+  content: { paddingTop: 16, paddingBottom: 20, gap: 14 },
 
   // top header area
   header: {
@@ -382,11 +417,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     gap: 12,
   },
-  heading: {
-    color: MainColors.text,
-    fontSize: 22,
-    fontWeight: "900",
-  },
+  heading: { color: MainColors.text, fontSize: 22, fontWeight: "900" },
   subheading: {
     color: MainColors.textMuted,
     fontSize: 13.5,
@@ -407,17 +438,11 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 999,
   },
-  headerBadgeText: {
-    color: MainColors.text,
-    fontSize: 12,
-    fontWeight: "900",
-  },
+  headerBadgeText: { color: MainColors.text, fontSize: 12, fontWeight: "900" },
 
   // section header container
-  sectionHeader: {
-    paddingHorizontal: 16,
-    gap: 6,
-  },
+  sectionHeader: { paddingHorizontal: 16, gap: 6 },
+
   // section header row (title + retry)
   sectionTitleRow: {
     flexDirection: "row",
@@ -425,6 +450,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     gap: 10,
   },
+
   // section title chip
   sectionChip: {
     flexDirection: "row",
@@ -443,12 +469,7 @@ const styles = StyleSheet.create({
     fontWeight: "900",
     letterSpacing: 0.2,
   },
-  // section hint under title
-  sectionHint: {
-    color: MainColors.textMuted,
-    fontSize: 12.5,
-    fontWeight: "600",
-  },
+  sectionHint: { color: MainColors.textMuted, fontSize: 12.5, fontWeight: "600" },
 
   // retry button on section header
   retryBtn: {
@@ -462,27 +483,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(109,94,249,0.35)",
   },
-  retryPressed: {
-    opacity: 0.9,
-    transform: [{ scale: 0.98 }],
-  },
-  retryText: {
-    color: MainColors.text,
-    fontSize: 12,
-    fontWeight: "900",
-  },
+  retryPressed: { opacity: 0.9, transform: [{ scale: 0.98 }] },
+  retryText: { color: MainColors.text, fontSize: 12, fontWeight: "900" },
 
-  // area where flatlist or error block sits
-  sectionBody: {
-    minHeight: 260,
-  },
+  // area where list or error block sits
+  sectionBody: { minHeight: 260 },
 
   // flatlist padding
-  listContent: {
-    paddingHorizontal: 16,
-    paddingTop: 6,
-    paddingBottom: 4,
-  },
+  listContent: { paddingHorizontal: 16, paddingTop: 6, paddingBottom: 4 },
 
   // loading chip used inside list empty slot
   inlineLoading: {
@@ -498,11 +506,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: MainColors.border,
   },
-  inlineLoadingText: {
-    color: MainColors.textMuted,
-    fontSize: 13,
-    fontWeight: "700",
-  },
+  inlineLoadingText: { color: MainColors.textMuted, fontSize: 13, fontWeight: "700" },
 
   // small empty text in list
   emptyText: {

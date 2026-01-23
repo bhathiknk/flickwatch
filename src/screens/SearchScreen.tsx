@@ -34,9 +34,14 @@ export default function SearchScreen() {
   // this one actually triggers api call after delay
   const [debouncedQuery, setDebouncedQuery] = useState("");
 
-  // simple request states
+  // request states
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // paging
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
   // ui friendly items for list
   const [items, setItems] = useState<UiItem[]>([]);
@@ -71,50 +76,80 @@ export default function SearchScreen() {
     });
   }, []);
 
-  // one place to do search + handle stale calls
+  // merge results so pagination doesnt duplicate rows
+  const mergeUnique = useCallback((prev: UiItem[], next: UiItem[]) => {
+    const map = new Map<string, UiItem>();
+    for (const p of prev) map.set(`${p.mediaType}-${p.id}`, p);
+    for (const n of next) map.set(`${n.mediaType}-${n.id}`, n);
+    return Array.from(map.values());
+  }, []);
+
+  // one place to do search (reset or load more)
   const runSearch = useCallback(
-    async (q: string) => {
+    async (q: string, mode: "reset" | "more" = "reset") => {
       const current = ++requestSeq.current;
 
-      setLoading(true);
+      if (mode === "more") {
+        setLoadingMore(true);
+      } else {
+        setLoading(true);
+        setItems([]);
+        setPage(1);
+        setTotalPages(1);
+      }
+
       setError(null);
 
       try {
-        const res = await searchMulti(q, 1);
+        const nextPage = mode === "more" ? page + 1 : 1;
+        const res: any = await searchMulti(q, nextPage);
 
         // if user typed again, ignore old result
         if (current !== requestSeq.current) return;
 
-        setItems(mapToUi(res.results || []));
+        const ui = mapToUi(res.results || []);
+        const newPage = res.page ?? nextPage;
+        const newTotal = res.total_pages ?? 1;
+
+        setPage(newPage);
+        setTotalPages(newTotal);
+
+        setItems((prev) => (mode === "more" ? mergeUnique(prev, ui) : ui));
       } catch (e: any) {
         if (current !== requestSeq.current) return;
-
         setError(e?.message || "Search failed. Try again.");
-        setItems([]);
+        if (mode !== "more") setItems([]);
       } finally {
-        if (current === requestSeq.current) setLoading(false);
+        if (current === requestSeq.current) {
+          setLoading(false);
+          setLoadingMore(false);
+        }
       }
     },
-    [mapToUi]
+    [mapToUi, mergeUnique, page]
   );
 
   // run when debounce query changes
   useEffect(() => {
     if (!debouncedQuery) {
       // clean view when empty
+      requestSeq.current += 1;
       setItems([]);
       setError(null);
       setLoading(false);
+      setLoadingMore(false);
+      setPage(1);
+      setTotalPages(1);
       return;
     }
 
-    runSearch(debouncedQuery);
+    runSearch(debouncedQuery, "reset");
   }, [debouncedQuery, runSearch]);
 
   // retry with same query
   const onRetry = useCallback(() => {
     if (!debouncedQuery) return;
-    runSearch(debouncedQuery);
+    runSearch(debouncedQuery, "reset");
   }, [debouncedQuery, runSearch]);
 
   // clear everything and cancel inflight response
@@ -125,7 +160,19 @@ export default function SearchScreen() {
     setItems([]);
     setError(null);
     setLoading(false);
+    setLoadingMore(false);
+    setPage(1);
+    setTotalPages(1);
   }, []);
+
+  // load next page when user reaches bottom
+  const loadMore = useCallback(() => {
+    if (!debouncedQuery) return;
+    if (loading || loadingMore) return;
+    if (page >= totalPages) return;
+
+    runSearch(debouncedQuery, "more");
+  }, [debouncedQuery, loading, loadingMore, page, totalPages, runSearch]);
 
   // small text under title depending on state
   const headerHint = useMemo(() => {
@@ -210,6 +257,8 @@ export default function SearchScreen() {
               columnWrapperStyle={styles.gridRow}
               contentContainerStyle={styles.listContent}
               showsVerticalScrollIndicator={false}
+              onEndReachedThreshold={0.6}
+              onEndReached={loadMore}
               renderItem={({ item }) => (
                 <MediaCard
                   style={{ width: "48%" }}
@@ -243,8 +292,8 @@ export default function SearchScreen() {
                 ) : null
               }
               ListFooterComponent={
-                // keeping this so later can add pagination
-                loading && items.length > 0 ? (
+                // show loader only when we really loading next page
+                loadingMore ? (
                   <View style={styles.inlineLoading}>
                     <Text style={styles.inlineLoadingText}>Loading more...</Text>
                   </View>
