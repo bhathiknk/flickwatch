@@ -28,18 +28,23 @@ type UiItem = {
 export default function SearchScreen() {
   const navigation = useNavigation<NavProp>();
 
+  // input text user types
   const [query, setQuery] = useState("");
+
+  // this one actually triggers api call after delay
   const [debouncedQuery, setDebouncedQuery] = useState("");
 
+  // simple request states
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // ui friendly items for list
   const [items, setItems] = useState<UiItem[]>([]);
 
-  // Prevent state updates after unmount / fast typing
+  // used to ignore old responses when typing fast
   const requestSeq = useRef(0);
 
-  // Debounce: 500ms (fits assignment requirement 400–600ms)
+  // 500ms debounce (req says 400-600)
   useEffect(() => {
     const t = setTimeout(() => {
       setDebouncedQuery(query.trim());
@@ -48,6 +53,7 @@ export default function SearchScreen() {
     return () => clearTimeout(t);
   }, [query]);
 
+  // tmdb response -> ui model
   const mapToUi = useCallback((raw: TMDBSearchItem[]): UiItem[] => {
     return raw.map((x: any) => {
       const isMovie = x.media_type === "movie";
@@ -65,6 +71,7 @@ export default function SearchScreen() {
     });
   }, []);
 
+  // one place to do search + handle stale calls
   const runSearch = useCallback(
     async (q: string) => {
       const current = ++requestSeq.current;
@@ -75,12 +82,13 @@ export default function SearchScreen() {
       try {
         const res = await searchMulti(q, 1);
 
-        // Ignore older responses if user typed again quickly
+        // if user typed again, ignore old result
         if (current !== requestSeq.current) return;
 
         setItems(mapToUi(res.results || []));
       } catch (e: any) {
         if (current !== requestSeq.current) return;
+
         setError(e?.message || "Search failed. Try again.");
         setItems([]);
       } finally {
@@ -90,10 +98,10 @@ export default function SearchScreen() {
     [mapToUi]
   );
 
-  // Fire search when debounced query changes
+  // run when debounce query changes
   useEffect(() => {
     if (!debouncedQuery) {
-      // Clear results when input is empty
+      // clean view when empty
       setItems([]);
       setError(null);
       setLoading(false);
@@ -103,13 +111,15 @@ export default function SearchScreen() {
     runSearch(debouncedQuery);
   }, [debouncedQuery, runSearch]);
 
+  // retry with same query
   const onRetry = useCallback(() => {
     if (!debouncedQuery) return;
     runSearch(debouncedQuery);
   }, [debouncedQuery, runSearch]);
 
+  // clear everything and cancel inflight response
   const clearQuery = useCallback(() => {
-    requestSeq.current += 1; // cancels any in-flight response
+    requestSeq.current += 1;
     setQuery("");
     setDebouncedQuery("");
     setItems([]);
@@ -117,6 +127,7 @@ export default function SearchScreen() {
     setLoading(false);
   }, []);
 
+  // small text under title depending on state
   const headerHint = useMemo(() => {
     if (!debouncedQuery) return "Search movies or TV shows from TMDB.";
     if (loading) return `Searching for "${debouncedQuery}"...`;
@@ -124,28 +135,23 @@ export default function SearchScreen() {
     return items.length === 0 ? "No results found." : `${items.length} results`;
   }, [debouncedQuery, loading, error, items.length]);
 
-  // Full-screen error only if we have a query and request failed
+  // show full error page if request failed
   if (error && !loading && debouncedQuery) {
-    return (
-      <ErrorState
-        title="Search error"
-        message={error}
-        onRetry={onRetry}
-      />
-    );
+    return <ErrorState title="Search error" message={error} onRetry={onRetry} />;
   }
 
   return (
     <View style={styles.container}>
-      {/* Header */}
+      {/* top header */}
       <View style={styles.header}>
         <Text style={styles.heading}>Search</Text>
         <Text style={styles.subheading}>{headerHint}</Text>
       </View>
 
-      {/* Search input */}
+      {/* search input area */}
       <View style={styles.searchBar}>
         <Ionicons name="search" size={18} color={MainColors.textFaint} />
+
         <TextInput
           value={query}
           onChangeText={setQuery}
@@ -156,12 +162,13 @@ export default function SearchScreen() {
           autoCorrect={false}
           returnKeyType="search"
           onSubmitEditing={() => {
-            // Allow manual search even before debounce finishes
+            // allow instant search on enter
             const q = query.trim();
             setDebouncedQuery(q);
           }}
         />
 
+        {/* show clear only when have text */}
         {!!query && (
           <Pressable
             onPress={clearQuery}
@@ -173,21 +180,19 @@ export default function SearchScreen() {
         )}
       </View>
 
-      {/* Loading indicator - keep UI responsive */}
+      {/* loading screen before any results */}
       {loading && items.length === 0 ? (
         <View style={{ flex: 1 }}>
           <Loading title="Searching" subtitle="Looking for matches..." />
         </View>
       ) : (
         <>
-          {/* Empty state */}
+          {/* empty result view */}
           {!loading && debouncedQuery && items.length === 0 ? (
             <View style={styles.emptyWrap}>
               <Ionicons name="search-outline" size={22} color={MainColors.textFaint} />
               <Text style={styles.emptyTitle}>No results</Text>
-              <Text style={styles.emptyText}>
-                Try a different keyword, or check spelling.
-              </Text>
+              <Text style={styles.emptyText}>Try a different keyword, or check spelling.</Text>
 
               <Pressable
                 onPress={clearQuery}
@@ -198,6 +203,7 @@ export default function SearchScreen() {
             </View>
           ) : (
             <FlatList
+              // grid result list
               data={items}
               keyExtractor={(item) => `${item.mediaType}-${item.id}`}
               numColumns={2}
@@ -222,10 +228,14 @@ export default function SearchScreen() {
                 />
               )}
               ListHeaderComponent={
-                // Helpful guidance when the screen first opens
+                // little hint when app opens and no search yet
                 !debouncedQuery ? (
                   <View style={styles.initialHint}>
-                    <Ionicons name="information-circle-outline" size={18} color={MainColors.accent} />
+                    <Ionicons
+                      name="information-circle-outline"
+                      size={18}
+                      color={MainColors.accent}
+                    />
                     <Text style={styles.initialHintText}>
                       Start typing to search movies and TV shows.
                     </Text>
@@ -233,6 +243,7 @@ export default function SearchScreen() {
                 ) : null
               }
               ListFooterComponent={
+                // keeping this so later can add pagination
                 loading && items.length > 0 ? (
                   <View style={styles.inlineLoading}>
                     <Text style={styles.inlineLoadingText}>Loading more...</Text>
@@ -252,10 +263,12 @@ export default function SearchScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: MainColors.background },
 
+  // header
   header: { paddingHorizontal: 16, paddingTop: 16, gap: 6 },
   heading: { color: MainColors.text, fontSize: 22, fontWeight: "900" },
   subheading: { color: MainColors.textMuted, fontSize: 13, fontWeight: "600" },
 
+  // search bar
   searchBar: {
     marginTop: 14,
     marginHorizontal: 16,
@@ -287,16 +300,11 @@ const styles = StyleSheet.create({
     borderColor: MainColors.sectionChipBorder,
   },
 
-  listContent: {
-    paddingHorizontal: 16,
-    paddingTop: 14,
-    paddingBottom: 20,
-  },
-  gridRow: {
-    justifyContent: "space-between",
-    marginBottom: 12,
-  },
+  // grid list
+  listContent: { paddingHorizontal: 16, paddingTop: 14, paddingBottom: 20 },
+  gridRow: { justifyContent: "space-between", marginBottom: 12 },
 
+  // first hint card
   initialHint: {
     flexDirection: "row",
     alignItems: "center",
@@ -316,6 +324,7 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
 
+  // empty state
   emptyWrap: {
     flex: 1,
     alignItems: "center",
@@ -342,13 +351,7 @@ const styles = StyleSheet.create({
   emptyBtnText: { color: MainColors.white, fontSize: 13, fontWeight: "900" },
   btnPressed: { opacity: 0.9, transform: [{ scale: 0.99 }] },
 
-  inlineLoading: {
-    paddingVertical: 10,
-    alignItems: "center",
-  },
-  inlineLoadingText: {
-    color: MainColors.textFaint,
-    fontSize: 12,
-    fontWeight: "700",
-  },
+  // footer loading slot
+  inlineLoading: { paddingVertical: 10, alignItems: "center" },
+  inlineLoadingText: { color: MainColors.textFaint, fontSize: 12, fontWeight: "700" },
 });
