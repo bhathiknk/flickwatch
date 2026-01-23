@@ -1,159 +1,361 @@
-import React, { useMemo, useState } from "react";
-import { View, Text, StyleSheet, FlatList, Pressable } from "react-native";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { View, Text, StyleSheet, FlatList, Pressable, ScrollView } from "react-native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useNavigation } from "@react-navigation/native";
+import Ionicons from "@expo/vector-icons/Ionicons";
 
 import { RootStackParamList } from "../navigation/RootNavigator";
 import MediaCard from "../components/MediaCard";
-import Loading from "../components/Loading";
 import ErrorState from "../components/ErrorState";
 import { MainColors } from "../utils/MainColors";
 
+import {
+  getPopularMovies,
+  getTrendingWeek,
+  getTopRatedTV,
+  MediaType,
+  TMDBMovie,
+  TMDBSearchItem,
+  TMDBTV,
+  ApiError,
+} from "../api/tmdb";
+import { getPosterUrl, getYear } from "../utils/image";
+
 type NavProp = NativeStackNavigationProp<RootStackParamList, "Tabs">;
 
-type DummyItem = {
-  id: number;
-  title: string;
-  mediaType: "movie" | "tv";
-  year: string;
-  rating: number;
-  posterUrl?: string | null;
+type SectionKey = "popular" | "trending" | "topRatedTV";
+
+type HomeSectionState<T> = {
+  loading: boolean;
+  error: ApiError | null;
+  items: T[];
 };
 
 export default function HomeScreen() {
   const navigation = useNavigation<NavProp>();
 
-  // Simple toggles to test Loading and Error UI quickly
-  const [mode, setMode] = useState<"content" | "loading" | "error">("content");
+  // Section state is independent so one broken endpoint doesn't kill the whole screen
+  const [popular, setPopular] = useState<HomeSectionState<TMDBMovie>>({
+    loading: true,
+    error: null,
+    items: [],
+  });
 
-  const DUMMY: DummyItem[] = useMemo(
-    () => [
-      {
-        id: 101,
-        title: "Dummy Movie",
-        mediaType: "movie",
-        year: "2024",
-        rating: 8.2,
-        // Put any valid image URL here if you want to see real images while testing
-        posterUrl: null,
-      },
-      {
-        id: 202,
-        title: "Dummy TV Show",
-        mediaType: "tv",
-        year: "2023",
-        rating: 7.8,
-        posterUrl: null,
-      },
-      {
-        id: 303,
-        title: "Another Dummy Title That Is A Bit Longer",
-        mediaType: "movie",
-        year: "2022",
-        rating: 6.9,
-        posterUrl: null,
-      },
-    ],
+  const [trending, setTrending] = useState<HomeSectionState<TMDBSearchItem>>({
+    loading: true,
+    error: null,
+    items: [],
+  });
+
+  const [topRatedTV, setTopRatedTV] = useState<HomeSectionState<TMDBTV>>({
+    loading: true,
+    error: null,
+    items: [],
+  });
+
+  const openDetail = useCallback(
+    (id: number, mediaType: MediaType, title?: string) => {
+      navigation.navigate("Detail", { id, mediaType, title });
+    },
+    [navigation]
+  );
+
+  // Popular movies
+  const loadPopular = useCallback(async () => {
+    setPopular((p) => ({ ...p, loading: true, error: null }));
+    try {
+      const data = await getPopularMovies(1);
+      setPopular({ loading: false, error: null, items: data.results ?? [] });
+    } catch (err: any) {
+      setPopular((p) => ({ ...p, loading: false, error: err }));
+    }
+  }, []);
+
+  // Trending this week (mixed media, filtered to movie/tv in tmdb.ts)
+  const loadTrending = useCallback(async () => {
+    setTrending((t) => ({ ...t, loading: true, error: null }));
+    try {
+      const data = await getTrendingWeek(1);
+      setTrending({ loading: false, error: null, items: data.results ?? [] });
+    } catch (err: any) {
+      setTrending((t) => ({ ...t, loading: false, error: err }));
+    }
+  }, []);
+
+  // Top rated TV shows
+  const loadTopRatedTV = useCallback(async () => {
+    setTopRatedTV((s) => ({ ...s, loading: true, error: null }));
+    try {
+      const data = await getTopRatedTV(1);
+      setTopRatedTV({ loading: false, error: null, items: data.results ?? [] });
+    } catch (err: any) {
+      setTopRatedTV((s) => ({ ...s, loading: false, error: err }));
+    }
+  }, []);
+
+  // Initial load
+  useEffect(() => {
+    loadPopular();
+    loadTrending();
+    loadTopRatedTV();
+  }, [loadPopular, loadTrending, loadTopRatedTV]);
+
+  // Generic section header component for consistent look
+  const SectionHeader = useCallback(
+    ({
+      title,
+      iconName,
+      hint,
+      onRetry,
+      showRetry,
+    }: {
+      title: string;
+      iconName: keyof typeof Ionicons.glyphMap;
+      hint?: string;
+      onRetry?: () => void;
+      showRetry?: boolean;
+    }) => (
+      <View style={styles.sectionHeader}>
+        <View style={styles.sectionTitleRow}>
+          <View style={styles.sectionChip}>
+            <Ionicons name={iconName} size={16} color={MainColors.accent} />
+            <Text style={styles.sectionTitle}>{title}</Text>
+          </View>
+
+          {showRetry && onRetry && (
+            <Pressable
+              onPress={onRetry}
+              style={({ pressed }) => [styles.retryBtn, pressed && styles.retryPressed]}
+            >
+              <Ionicons name="refresh" size={16} color={MainColors.text} />
+              <Text style={styles.retryText}>Retry</Text>
+            </Pressable>
+          )}
+        </View>
+
+        {!!hint && <Text style={styles.sectionHint}>{hint}</Text>}
+      </View>
+    ),
     []
   );
 
-  if (mode === "loading") {
-    return <Loading title="Loading Home" subtitle="Testing loading component..." />;
-  }
+  // Render helpers
+  const renderPopularItem = useCallback(
+    ({ item }: { item: TMDBMovie }) => {
+      const posterUrl = getPosterUrl(item.poster_path);
+      const year = getYear(item.release_date);
 
-  if (mode === "error") {
-    return (
-      <ErrorState
-        title="Test error state"
-        message="This is just a UI test. Tap retry to go back."
-        onRetry={() => setMode("content")}
-      />
-    );
-  }
+      return (
+        <MediaCard
+          title={item.title}
+          posterUrl={posterUrl}
+          rating={item.vote_average}
+          year={year}
+          subtitle="MOVIE"
+          onPress={() => openDetail(item.id, "movie", item.title)}
+        />
+      );
+    },
+    [openDetail]
+  );
+
+  const renderTrendingItem = useCallback(
+    ({ item }: { item: TMDBSearchItem }) => {
+      const isMovie = item.media_type === "movie";
+      const title = isMovie ? (item as any).title : (item as any).name;
+      const date = isMovie ? (item as any).release_date : (item as any).first_air_date;
+
+      return (
+        <MediaCard
+          variant="compact"
+          title={title || "Untitled"}
+          posterUrl={getPosterUrl(item.poster_path)}
+          rating={item.vote_average}
+          year={getYear(date)}
+          subtitle={(item.media_type || "movie").toUpperCase()}
+          onPress={() => openDetail(item.id, item.media_type, title)}
+        />
+      );
+    },
+    [openDetail]
+  );
+
+  const renderTopRatedTVItem = useCallback(
+    ({ item }: { item: TMDBTV }) => {
+      return (
+        <MediaCard
+          title={item.name}
+          posterUrl={getPosterUrl(item.poster_path)}
+          rating={item.vote_average}
+          year={getYear(item.first_air_date)}
+          subtitle="TV"
+          onPress={() => openDetail(item.id, "tv", item.name)}
+        />
+      );
+    },
+    [openDetail]
+  );
+
+  const listSeparator = useMemo(() => <View style={{ width: 12 }} />, []);
 
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      {/* Top header block */}
       <View style={styles.header}>
-        <View style={{ gap: 4 }}>
-          <Text style={styles.heading}>Home</Text>
+        <View style={{ gap: 6 }}>
+          <Text style={styles.heading}>FlickWatch</Text>
           <Text style={styles.subheading}>
-            Testing reusable components before real TMDB data.
+            Popular picks, weekly trends, and top rated TV in one place.
           </Text>
         </View>
 
-        {/* Quick test controls */}
-        <View style={styles.actions}>
-          <Pressable
-            style={({ pressed }) => [styles.pill, pressed && styles.pillPressed]}
-            onPress={() => setMode("loading")}
-          >
-            <Text style={styles.pillText}>Loading</Text>
-          </Pressable>
-
-          <Pressable
-            style={({ pressed }) => [styles.pill, pressed && styles.pillPressed]}
-            onPress={() => setMode("error")}
-          >
-            <Text style={styles.pillText}>Error</Text>
-          </Pressable>
+        <View style={styles.headerBadge}>
+          <Ionicons name="sparkles" size={16} color={MainColors.rating} />
+          <Text style={styles.headerBadgeText}>Discover</Text>
         </View>
       </View>
 
-      <Text style={styles.sectionTitle}>Popular (UI Test)</Text>
-
-      <FlatList
-        data={DUMMY}
-        keyExtractor={(item) => String(item.id)}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.listContent}
-        ItemSeparatorComponent={() => <View style={{ width: 12 }} />}
-        renderItem={({ item }) => (
-          <MediaCard
-            title={item.title}
-            posterUrl={item.posterUrl}
-            rating={item.rating}
-            year={item.year}
-            subtitle={item.mediaType.toUpperCase()}
-            onPress={() =>
-              navigation.navigate("Detail", {
-                id: item.id,
-                mediaType: item.mediaType,
-                title: item.title,
-              })
-            }
-          />
-        )}
+      {/* Popular Movies section */}
+      <SectionHeader
+        title="Popular Movies"
+        iconName="flame"
+        hint="What people are watching right now"
+        showRetry={!!popular.error}
+        onRetry={loadPopular}
       />
 
-      <Text style={styles.sectionTitle}>Trending (Compact Variant)</Text>
-
-      <FlatList
-        data={DUMMY}
-        keyExtractor={(item) => `compact-${item.id}`}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.listContent}
-        ItemSeparatorComponent={() => <View style={{ width: 12 }} />}
-        renderItem={({ item }) => (
-          <MediaCard
-            variant="compact"
-            title={item.title}
-            posterUrl={item.posterUrl}
-            rating={item.rating}
-            year={item.year}
-            subtitle={item.mediaType.toUpperCase()}
-            onPress={() =>
-              navigation.navigate("Detail", {
-                id: item.id,
-                mediaType: item.mediaType,
-                title: item.title,
-              })
+      {popular.error ? (
+        <View style={styles.sectionBody}>
+          <ErrorState
+            title="Couldn't load popular movies"
+            message={popular.error.message}
+            onRetry={loadPopular}
+          />
+        </View>
+      ) : (
+        <View style={styles.sectionBody}>
+          <FlatList
+            data={popular.items}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            keyExtractor={(item) => String(item.id)}
+            ItemSeparatorComponent={() => listSeparator}
+            contentContainerStyle={styles.listContent}
+            renderItem={renderPopularItem}
+            // Keeps UI smooth even on older devices
+            initialNumToRender={6}
+            windowSize={5}
+            removeClippedSubviews
+            onEndReachedThreshold={0.6}
+            ListEmptyComponent={
+              popular.loading ? (
+                <View style={styles.inlineLoading}>
+                  <Ionicons name="reload" size={18} color={MainColors.textMuted} />
+                  <Text style={styles.inlineLoadingText}>Loading...</Text>
+                </View>
+              ) : (
+                <Text style={styles.emptyText}>No items available.</Text>
+              )
             }
           />
-        )}
+        </View>
+      )}
+
+      <View style={styles.divider} />
+
+      {/* Trending This Week section */}
+      <SectionHeader
+        title="Trending This Week"
+        iconName="trending-up"
+        hint="Movies and TV with momentum"
+        showRetry={!!trending.error}
+        onRetry={loadTrending}
       />
-    </View>
+
+      {trending.error ? (
+        <View style={styles.sectionBody}>
+          <ErrorState
+            title="Couldn't load trending"
+            message={trending.error.message}
+            onRetry={loadTrending}
+          />
+        </View>
+      ) : (
+        <View style={styles.sectionBody}>
+          <FlatList
+            data={trending.items}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            keyExtractor={(item) => `${item.media_type}-${item.id}`}
+            ItemSeparatorComponent={() => listSeparator}
+            contentContainerStyle={styles.listContent}
+            renderItem={renderTrendingItem}
+            initialNumToRender={8}
+            windowSize={6}
+            removeClippedSubviews
+            ListEmptyComponent={
+              trending.loading ? (
+                <View style={styles.inlineLoading}>
+                  <Ionicons name="reload" size={18} color={MainColors.textMuted} />
+                  <Text style={styles.inlineLoadingText}>Loading...</Text>
+                </View>
+              ) : (
+                <Text style={styles.emptyText}>No items available.</Text>
+              )
+            }
+          />
+        </View>
+      )}
+
+      <View style={styles.divider} />
+
+      {/* Top Rated TV section */}
+      <SectionHeader
+        title="Top Rated TV Shows"
+        iconName="tv"
+        hint="Fan favorites with top scores"
+        showRetry={!!topRatedTV.error}
+        onRetry={loadTopRatedTV}
+      />
+
+      {topRatedTV.error ? (
+        <View style={styles.sectionBody}>
+          <ErrorState
+            title="Couldn't load top rated TV"
+            message={topRatedTV.error.message}
+            onRetry={loadTopRatedTV}
+          />
+        </View>
+      ) : (
+        <View style={styles.sectionBody}>
+          <FlatList
+            data={topRatedTV.items}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            keyExtractor={(item) => String(item.id)}
+            ItemSeparatorComponent={() => listSeparator}
+            contentContainerStyle={styles.listContent}
+            renderItem={renderTopRatedTVItem}
+            initialNumToRender={6}
+            windowSize={5}
+            removeClippedSubviews
+            ListEmptyComponent={
+              topRatedTV.loading ? (
+                <View style={styles.inlineLoading}>
+                  <Ionicons name="reload" size={18} color={MainColors.textMuted} />
+                  <Text style={styles.inlineLoadingText}>Loading...</Text>
+                </View>
+              ) : (
+                <Text style={styles.emptyText}>No items available.</Text>
+              )
+            }
+          />
+        </View>
+      )}
+
+      {/* Bottom spacing for tab bar */}
+      <View style={{ height: 30 }} />
+    </ScrollView>
   );
 }
 
@@ -161,7 +363,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: MainColors.background,
+  },
+  content: {
     paddingTop: 16,
+    paddingBottom: 20,
     gap: 14,
   },
 
@@ -179,42 +384,124 @@ const styles = StyleSheet.create({
   },
   subheading: {
     color: MainColors.textMuted,
-    fontSize: 13,
+    fontSize: 13.5,
     fontWeight: "600",
+    maxWidth: 260,
+    lineHeight: 18,
   },
 
-  actions: {
+  headerBadge: {
     flexDirection: "row",
-    gap: 10,
-    marginTop: 2,
-  },
-  pill: {
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: MainColors.sectionChipBg,
+    borderWidth: 1,
+    borderColor: MainColors.sectionChipBorder,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 999,
-    backgroundColor: MainColors.surface,
-    borderWidth: 1,
-    borderColor: MainColors.border,
   },
-  pillPressed: {
+  headerBadgeText: {
+    color: MainColors.text,
+    fontSize: 12,
+    fontWeight: "900",
+  },
+
+  sectionHeader: {
+    paddingHorizontal: 16,
+    gap: 6,
+  },
+  sectionTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+  },
+  sectionChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: MainColors.sectionChipBg,
+    borderWidth: 1,
+    borderColor: MainColors.sectionChipBorder,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderRadius: 999,
+  },
+  sectionTitle: {
+    color: MainColors.text,
+    fontSize: 13.5,
+    fontWeight: "900",
+    letterSpacing: 0.2,
+  },
+  sectionHint: {
+    color: MainColors.textMuted,
+    fontSize: 12.5,
+    fontWeight: "600",
+  },
+
+  retryBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderRadius: 999,
+    backgroundColor: MainColors.primarySoft,
+    borderWidth: 1,
+    borderColor: "rgba(109,94,249,0.35)",
+  },
+  retryPressed: {
     opacity: 0.9,
     transform: [{ scale: 0.98 }],
   },
-  pillText: {
+  retryText: {
     color: MainColors.text,
     fontSize: 12,
-    fontWeight: "800",
+    fontWeight: "900",
   },
 
-  sectionTitle: {
-    paddingHorizontal: 16,
-    color: MainColors.text,
-    fontSize: 14,
-    fontWeight: "900",
+  sectionBody: {
+    minHeight: 260,
   },
 
   listContent: {
     paddingHorizontal: 16,
-    paddingBottom: 6,
+    paddingTop: 6,
+    paddingBottom: 4,
+  },
+
+  inlineLoading: {
+    height: 80,
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
+    gap: 10,
+    marginLeft: 16,
+    paddingHorizontal: 14,
+    borderRadius: 14,
+    backgroundColor: MainColors.surface,
+    borderWidth: 1,
+    borderColor: MainColors.border,
+  },
+  inlineLoadingText: {
+    color: MainColors.textMuted,
+    fontSize: 13,
+    fontWeight: "700",
+  },
+
+  emptyText: {
+    color: MainColors.textFaint,
+    fontSize: 13,
+    fontWeight: "700",
+    marginLeft: 16,
+    marginTop: 10,
+  },
+
+  divider: {
+    height: 1,
+    backgroundColor: MainColors.divider,
+    marginHorizontal: 16,
+    marginTop: 6,
   },
 });

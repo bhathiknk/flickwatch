@@ -1,4 +1,3 @@
-// src/components/MediaCard.tsx
 import React from "react";
 import {
   View,
@@ -17,12 +16,11 @@ type MediaCardProps = {
   rating?: number | null;
   year?: string | null;
 
-  // Optional extra label under title (media type, etc.)
+
   subtitle?: string;
 
   onPress?: () => void;
 
-  // Useful if you want different sizes for Home vs Search
   variant?: "default" | "compact";
 
   style?: ViewStyle;
