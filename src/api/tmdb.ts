@@ -143,12 +143,21 @@ function toApiError(err: unknown): ApiError {
  */
 async function get<T>(path: string, params?: Record<string, any>): Promise<T> {
   try {
-    const res = await client.get<T>(path, { params });
+    const baseParams = (client.defaults.params as any) || {};
+
+    const res = await client.get<T>(path, {
+      params: {
+        ...baseParams,
+        ...(params ?? {}),
+      },
+    });
+
     return res.data;
   } catch (err) {
     throw toApiError(err);
   }
 }
+
 
 /**
  * /movie/popular

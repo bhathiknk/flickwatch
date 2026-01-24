@@ -21,6 +21,7 @@ import { getCredits, getDetails, MediaType, TMDBCreditsResponse } from "../api/t
 import { getBackdropUrl, getPosterUrl, getProfileUrl, getYear } from "../utils/image";
 import { useWatchlistStore } from "../store/watchlistStore";
 import { useColorMode } from "../utils/useColorMode";
+import { useNavigation } from "@react-navigation/native";
 
 
 type DetailRoute = RouteProp<RootStackParamList, "Detail">;
@@ -46,7 +47,7 @@ export default function DetailScreen() {
 
   // subscribe so this screen re-renders when theme changes
     const mode = useColorMode();
-  
+  const navigation = useNavigation();
     const styles = useMemo(() => makeStyles(), [mode]);
 
   // watchlist selectors kept small for less rerenders
@@ -240,7 +241,11 @@ export default function DetailScreen() {
           <Text style={styles.toastText}>{toastText}</Text>
         </Animated.View>
       )}
-
+<View style={styles.headerBar}>
+  <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
+    <Ionicons name="arrow-back" size={24} color={MainColors.text} />
+  </Pressable>
+</View>
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
         {/* hero section with backdrop + poster */}
         <View style={styles.hero}>
@@ -406,6 +411,27 @@ function makeStyles() {
     fontWeight: "800",
     textAlign: "center",
   },
+
+  headerBar: {
+  position: "absolute",
+  top: 0,
+  left: 0,
+  right: 0,
+  zIndex: 10,
+  paddingTop: 50,
+  paddingHorizontal: 16,
+  paddingBottom: 12,
+},
+backButton: {
+  width: 40,
+  height: 40,
+  borderRadius: 20,
+  backgroundColor: MainColors.surface,
+  alignItems: "center",
+  justifyContent: "center",
+  borderWidth: 1,
+  borderColor: MainColors.border,
+},
 
   // scroll container
   container: { flex: 1, backgroundColor: MainColors.background },

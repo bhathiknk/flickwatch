@@ -272,13 +272,7 @@ export default function HomeScreen() {
       <Ionicons name={themeIcon as any} size={18} color={MainColors.text} />
     </Pressable>
 
-    <Pressable
-      style={({ pressed }) => [styles.iconBtn, pressed && { opacity: 0.9 }]}
-      hitSlop={10}
-      onPress={() => navigation.navigate("Tabs")}
-    >
-      <Ionicons name="search" size={18} color={MainColors.text} />
-    </Pressable>
+
   </View>
 </View>
 

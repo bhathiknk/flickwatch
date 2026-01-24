@@ -226,7 +226,7 @@ function makeStyles() {
 
   // empty box styles
   emptyBox: {
-    marginTop: 16,
+    marginTop: 50,
     padding: 16,
     borderRadius: 14,
     backgroundColor: MainColors.surface,
