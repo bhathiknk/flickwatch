@@ -1,6 +1,7 @@
 import React from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
+import { StatusBar } from "react-native";
 
 import BottomTabs from "./BottomTabs";
 import DetailScreen from "../screens/DetailScreen";
@@ -17,10 +18,21 @@ export type RootStackParamList = {
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
+// Wrapper component for Tabs that includes SafeAreaView
+function TabsWithSafeArea() {
+  return (
+    <>
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <SafeAreaView style={{ flex: 1, backgroundColor: "#FFFFFF" }} edges={["top"]}>
+        <BottomTabs />
+      </SafeAreaView>
+    </>
+  );
+}
+
 export default function RootNavigator() {
   return (
     <SafeAreaProvider>
-      <SafeAreaView style={{ flex: 1, backgroundColor: MainColors.surface }} edges={["top"]}>
         <Stack.Navigator
           screenOptions={{
             headerStyle: { backgroundColor: MainColors.surface },
@@ -31,7 +43,7 @@ export default function RootNavigator() {
         >
           <Stack.Screen
             name="Tabs"
-            component={BottomTabs}
+            component={TabsWithSafeArea}
             options={{ headerShown: false }}
           />
 
@@ -47,7 +59,6 @@ export default function RootNavigator() {
             options={{ title: "Browse" }}
           />
         </Stack.Navigator>
-      </SafeAreaView>
     </SafeAreaProvider>
   );
 }

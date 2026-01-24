@@ -10,6 +10,7 @@ import {
   Animated,
 } from "react-native";
 import { RouteProp, useRoute } from "@react-navigation/native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
 import { RootStackParamList } from "../navigation/RootNavigator";
@@ -220,43 +221,48 @@ export default function DetailScreen() {
 
   return (
     <View style={styles.root}>
-      {/* toast overlay */}
-      {toastText && (
-        <Animated.View
-          style={[
-            styles.toast,
-            {
-              opacity: toastAnim,
-              transform: [
-                {
-                  translateY: toastAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [10, 0],
-                  }),
-                },
-              ],
-            },
-          ]}
-        >
-          <Text style={styles.toastText}>{toastText}</Text>
-        </Animated.View>
-      )}
-<View style={styles.headerBar}>
-  <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
-    <Ionicons name="arrow-back" size={24} color={MainColors.text} />
-  </Pressable>
-</View>
-      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-        {/* hero section with backdrop + poster */}
-        <View style={styles.hero}>
-          {detail.backdropUrl ? (
-            <Image source={{ uri: detail.backdropUrl }} style={styles.backdrop} />
-          ) : (
-            <View style={styles.backdropFallback} />
-          )}
+      <SafeAreaView edges={["top"]} style={styles.safeArea}>
+        {/* toast overlay */}
+        {toastText && (
+          <Animated.View
+            style={[
+              styles.toast,
+              {
+                opacity: toastAnim,
+                transform: [
+                  {
+                    translateY: toastAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [10, 0],
+                    }),
+                  },
+                ],
+              },
+            ]}
+          >
+            <Text style={styles.toastText}>{toastText}</Text>
+          </Animated.View>
+        )}
+      </SafeAreaView>
 
-          {/* overlay for readability */}
-          <View style={styles.heroOverlay} />
+     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+  {/* hero section with backdrop + poster */}
+  <View style={styles.hero}>
+    {detail.backdropUrl ? (
+      <Image source={{ uri: detail.backdropUrl}} style={styles.backdrop} />
+    ) : (
+      <View style={styles.backdropFallback} />
+    )}
+
+ {/* overlay for readability */}
+    <View style={styles.heroOverlay} />
+
+            {/* back button on cover */}
+    <View style={styles.heroBackButton}>
+      <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
+        <Ionicons name="arrow-back" size={24} color={MainColors.text} />
+      </Pressable>
+    </View>
 
           <View style={styles.heroContent}>
             {/* poster block */}
@@ -391,10 +397,20 @@ function makeStyles() {
   // root container
   root: { flex: 1, backgroundColor: MainColors.background },
 
+  // safe area wrapper
+  safeArea: { 
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 10,
+    backgroundColor: "#FFFFFF",
+  },
+
   // toast styles
   toast: {
     position: "absolute",
-    top: 14,
+    top: 10,
     left: 16,
     right: 16,
     zIndex: 99,
@@ -412,41 +428,41 @@ function makeStyles() {
     textAlign: "center",
   },
 
-  headerBar: {
-  position: "absolute",
-  top: 0,
-  left: 0,
-  right: 0,
-  zIndex: 10,
-  paddingTop: 50,
-  paddingHorizontal: 16,
-  paddingBottom: 12,
-},
-backButton: {
-  width: 40,
-  height: 40,
-  borderRadius: 20,
-  backgroundColor: MainColors.surface,
-  alignItems: "center",
-  justifyContent: "center",
-  borderWidth: 1,
-  borderColor: MainColors.border,
-},
-
   // scroll container
-  container: { flex: 1, backgroundColor: MainColors.background },
-  content: { paddingBottom: 18 },
+container: { flex: 1, backgroundColor: MainColors.background, paddingTop: 60 },
+content: { paddingBottom: 18 },
 
-  // hero/backdrop area
-  hero: {
-    height: 360,
-    position: "relative",
-    overflow: "hidden",
-    backgroundColor: MainColors.surface2,
-  },
+
+// hero/backdrop area
+hero: {
+  height: 420,
+  position: "relative",
+  overflow: "hidden",
+  backgroundColor: MainColors.surface2,
+  marginTop: -60,
+},
+
   backdrop: { ...StyleSheet.absoluteFillObject, resizeMode: "cover" },
   backdropFallback: { ...StyleSheet.absoluteFillObject, backgroundColor: MainColors.surface2 },
   heroOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: MainColors.overlay },
+
+  // back button on hero
+heroBackButton: {
+  position: "absolute",
+  top: 75,
+  left: 16,
+  zIndex: 20,
+},
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: MainColors.surface,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: MainColors.border,
+  },
 
   // hero layout content
   heroContent: {
