@@ -20,6 +20,8 @@ import ErrorState from "../components/ErrorState";
 import { getCredits, getDetails, MediaType, TMDBCreditsResponse } from "../api/tmdb";
 import { getBackdropUrl, getPosterUrl, getProfileUrl, getYear } from "../utils/image";
 import { useWatchlistStore } from "../store/watchlistStore";
+import { useColorMode } from "../utils/useColorMode";
+
 
 type DetailRoute = RouteProp<RootStackParamList, "Detail">;
 
@@ -41,6 +43,11 @@ export default function DetailScreen() {
   // route params from home/search/watchlist
   const route = useRoute<DetailRoute>();
   const { id, mediaType } = route.params;
+
+  // subscribe so this screen re-renders when theme changes
+    const mode = useColorMode();
+  
+    const styles = useMemo(() => makeStyles(), [mode]);
 
   // watchlist selectors kept small for less rerenders
   const hydrate = useWatchlistStore((s) => s.hydrate);
@@ -374,7 +381,8 @@ export default function DetailScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function makeStyles() {
+  return StyleSheet.create({
   // root container
   root: { flex: 1, backgroundColor: MainColors.background },
 
@@ -535,4 +543,5 @@ const styles = StyleSheet.create({
   castName: { color: MainColors.text, fontSize: 12.5, fontWeight: "900" },
   castRole: { color: MainColors.textMuted, fontSize: 12, fontWeight: "700" },
   castEmpty: { color: MainColors.textFaint, fontSize: 12.5, fontWeight: "700" },
-});
+  });
+}

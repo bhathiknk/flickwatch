@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
 import {
   View,
   Text,
@@ -16,6 +17,8 @@ import { RootStackParamList } from "../navigation/RootNavigator";
 import { useWatchlistStore } from "../store/watchlistStore";
 import { MainColors } from "../utils/MainColors";
 import WatchlistCard from "../components/WatchlistCard";
+import { useColorMode } from "../utils/useColorMode";
+
 
 type NavProp = NativeStackNavigationProp<RootStackParamList, "Tabs">;
 
@@ -33,6 +36,11 @@ export default function WatchlistScreen() {
   const hydrated = useWatchlistStore((s) => s.hydrated);
   const items = useWatchlistStore((s) => s.items);
   const remove = useWatchlistStore((s) => s.remove);
+
+
+  const mode = useColorMode();
+  const styles = useMemo(() => makeStyles(), [mode]);
+
 
   // confirmation modal state
   const [pendingRemove, setPendingRemove] = useState<PendingRemove>(null);
@@ -193,7 +201,8 @@ export default function WatchlistScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function makeStyles() {
+  return StyleSheet.create({
   // screen container styles
   container: {
     flex: 1,
@@ -319,4 +328,5 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255,92,108,0.40)",
   },
   btnDangerText: { color: MainColors.white, fontSize: 13, fontWeight: "900" },
-});
+})
+}

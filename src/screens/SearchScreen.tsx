@@ -13,6 +13,8 @@ import ErrorState from "../components/ErrorState";
 
 import { searchMulti, TMDBSearchItem, MediaType } from "../api/tmdb";
 import { getPosterUrl, getYear } from "../utils/image";
+import { useColorMode } from "../utils/useColorMode";
+
 
 type NavProp = NativeStackNavigationProp<RootStackParamList, "Tabs">;
 
@@ -30,6 +32,10 @@ export default function SearchScreen() {
 
   // input text user types
   const [query, setQuery] = useState("");
+
+  const mode = useColorMode();
+const styles = useMemo(() => makeStyles(), [mode]);
+
 
   // this one actually triggers api call after delay
   const [debouncedQuery, setDebouncedQuery] = useState("");
@@ -309,7 +315,8 @@ export default function SearchScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function makeStyles() {
+  return StyleSheet.create({
   container: { flex: 1, backgroundColor: MainColors.background },
 
   // header
@@ -403,4 +410,5 @@ const styles = StyleSheet.create({
   // footer loading slot
   inlineLoading: { paddingVertical: 10, alignItems: "center" },
   inlineLoadingText: { color: MainColors.textFaint, fontSize: 12, fontWeight: "700" },
-});
+})
+}

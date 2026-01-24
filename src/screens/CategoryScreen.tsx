@@ -16,6 +16,8 @@ import { MainColors } from "../utils/MainColors";
 import MediaCard from "../components/MediaCard";
 import ErrorState from "../components/ErrorState";
 import SkeletonCard from "../components/SkeletonCard";
+import { useColorMode } from "../utils/useColorMode";
+
 
 import {
   getPopularMovies,
@@ -63,6 +65,12 @@ export default function CategoryScreen() {
 
   // keep list ref so we can jump to top when changing pages
   const listRef = useRef<FlatList<UiItem>>(null!);
+
+
+    // subscribe so this screen re-renders when theme changes
+      const mode = useColorMode();
+    
+      const styles = useMemo(() => makeStyles(), [mode]);
 
   // page state lives here, same logic for all 3 categories
   const [state, setState] = useState<State>({
@@ -305,7 +313,8 @@ export default function CategoryScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function makeStyles() {
+  return StyleSheet.create({
   // screen wrapper
   container: { flex: 1, backgroundColor: MainColors.background },
 
@@ -379,4 +388,5 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     rowGap: 12,
   },
-});
+})
+}
