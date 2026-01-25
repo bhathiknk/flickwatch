@@ -138,13 +138,9 @@ I used Zustand instead of Context API or Redux Toolkit because:
 Top prompts used
 
 1. help me create a zustand watchlist store using asyncstorage so items stay saved even after closing and reopening the app. include add/remove/toggle and hydrate
-
 2. in detail screen, i want an add/remove watchlist button that updates zustand store and shows a small toast feedback (added/removed). implement without breaking existing ui
-
 3. in my detail screen, when content is short the bottom spacing becomes too large and doesn’t adjust. fix the layout so it looks consistent regardless of content height
-
 4. replace infinite scroll pagination with a pager bar (prev/next + page numbers). clicking a page should request that page from tmdb and update results.
-
 5. write 2–3 simple jest + react testing library tests for my watchlist- store add/remove/toggle + hydrate from asyncstorage, and one screen test for removing via modal confirm
 
 
@@ -166,13 +162,13 @@ Top prompts used
 ## Manual improvements / edge cases I handled
 
 * double-checked page button click really loads the selected TMDB page (not repeating page 1).
-
 * hid the pagination bar when there is only one page of results.
-
 * fixed the pager layout so numbers don’t break the UI by making them scroll horizontally.
-
 * adjusted the Detail screen spacing so the bottom space looks normal even when content is short.
-
 * updated Jest setup with extra mocks so tests run without Expo/React Native module errors.
-
 * confirmed watchlist data stays saved after closing and reopening the app using AsyncStorage hydration.
+
+
+
+## This is my first React Native (Expo) application. I learned React Native as quickly as possible to complete this assignment within the given time. I’m excited to keep improving and learning more in the future, and I’d really appreciate any feedback you can share.
+
