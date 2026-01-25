@@ -20,7 +20,7 @@ FlickWatch is a mobile app built with Expo and React Native using the TMDB API. 
 - Watchlist Screen: ./screenshots/watchlist.png
 
 ### Video Demo
-- Demo Link: PASTE_LINK_HERE
+- Demo Link: https://drive.google.com/file/d/13ms-sw0RvPXZkNeasBt-k8CJd_v9ArHs/view?usp=sharing
 
 ---
 
