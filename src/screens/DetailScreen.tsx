@@ -410,7 +410,7 @@ function makeStyles() {
   // toast styles
   toast: {
     position: "absolute",
-    top: 10,
+    top: 70,
     left: 16,
     right: 16,
     zIndex: 99,
@@ -435,11 +435,11 @@ content: { paddingBottom: 18 },
 
 // hero/backdrop area
 hero: {
-  height: 420,
+  height: 360,
   position: "relative",
   overflow: "hidden",
   backgroundColor: MainColors.surface2,
-  marginTop: -60,
+  marginTop: -10,
 },
 
   backdrop: { ...StyleSheet.absoluteFillObject, resizeMode: "cover" },
@@ -449,7 +449,7 @@ hero: {
   // back button on hero
 heroBackButton: {
   position: "absolute",
-  top: 75,
+  top: 40,
   left: 16,
   zIndex: 20,
 },

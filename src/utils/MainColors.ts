@@ -9,6 +9,7 @@ export const LightColors = {
   surface: "#FAFAFA",
   surface2: "#aca6a6",
   border: "rgba(0,0,0,0.08)",
+  button:"rgba(0,0,0,0.08)",
 
   // Text - Rich Black
   text: "#1A1A1A",
@@ -36,7 +37,7 @@ export const LightColors = {
   overlay: "rgba(131, 127, 127, 0.85)",
   chipBg: "rgba(0,0,0,0.04)",
   chipBorder: "rgba(0,0,0,0.08)",
-  buttonDark: "#F0F0F0",
+  buttonDark: "#0f0f0f",
 
   white: "#FFFFFF",
   shadow: "#000000",
