@@ -7,17 +7,28 @@ FlickWatch is a mobile app built with Expo and React Native using the TMDB API. 
 ## Screenshots
 
 
-
-
-
-
-
-
 ### App Screens
-- Home Screen: ./screenshots/home.png
-- Search Screen: ./screenshots/search.png
-- Detail Screen: ./screenshots/detail.png
-- Watchlist Screen: ./screenshots/watchlist.png
+- Home Screen:
+
+<img width="1008" height="2244" alt="Screenshot_20260124-152418" src="https://github.com/user-attachments/assets/5df8e524-0cf0-4e71-8504-e90cbca17ee5" />
+
+
+
+- Search Screen:
+
+<img width="1008" height="2244" alt="Screenshot_20260124-152445" src="https://github.com/user-attachments/assets/9f0248c0-b132-4523-8362-a4f1a2d39af3" />
+
+
+
+- Detail Screen:
+
+<img width="1008" height="2244" alt="Screenshot_20260124-152525" src="https://github.com/user-attachments/assets/ba1a0de5-d645-42d8-a909-569518630766" />
+
+- Watchlist Screen:
+  
+<img width="1008" height="2244" alt="Screenshot_20260124-152555" src="https://github.com/user-attachments/assets/6f2cfabf-1c28-4743-b259-6e642d353277" />
+
+  
 
 ### Video Demo
 - Demo Link: https://drive.google.com/file/d/13ms-sw0RvPXZkNeasBt-k8CJd_v9ArHs/view?usp=sharing
